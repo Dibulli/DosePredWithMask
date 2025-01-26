@@ -1,0 +1,46 @@
+def dice_loss(predicted_dose, true_dose, thresholds=[7, 14, 21, 28, 35, 42, 49, 56, 63, 70], scale=10,
+              weights=[1, 1, 1, 1, 1, 2, 2, 2, 2, 2]):
+    """
+    计算等剂量线的 Dice 损失函数。
+    :param predicted_dose: 预测剂量分布 (B, H, W, D)
+    :param true_dose: 真实剂量分布 (B, H, W, D)
+    :param thresholds: 等剂量线的阈值列表 (如 [0.1, 0.5, 0.8])
+    :return: Dice 损失值
+    """
+    dice_losses = []
+
+    for weight, tau in zip(weights,thresholds):
+        # 二值化，保持计算图
+        tau = torch.tensor(tau).to(predicted_dose.device).requires_grad_(False)
+        # weight = torch.tensor(weight).to(predicted_dose.device).requires_grad_(False)
+
+        pred_mask = torch.sigmoid((predicted_dose - tau) * scale)
+        true_mask = torch.sigmoid((true_dose - tau) * scale)
+
+        # 计算交集和并集
+        intersection = torch.sum(pred_mask * true_mask, dim=(1, 2, 3))
+        pred_sum = torch.sum(pred_mask, dim=(1, 2, 3))
+        true_sum = torch.sum(true_mask, dim=(1, 2, 3))
+        # print(pred_mask.requires_grad, "-pred mask")  # 应该为 True
+        # 计算 Dice 系数
+        dice = (2. * intersection) / (pred_sum + true_sum + 1e-6)
+        # print(dice.requires_grad)
+        dice_losses.append(1 - dice)  # 1 - Dice
+
+    # weighted_dice = sum(w * dice for w, dice in zip(weights, dice_losses))
+    # 平均损失
+    return torch.mean(torch.stack(dice_losses))
+
+"""mae loss module"""
+# loss = torch.nn.L1Loss()(pred, true_dose)
+"""mae loss module"""
+
+"""dvh loss module_without_body"""
+# pred_mat = pred * masks[:, 1:, :, :]
+# real_mat = true_dose * masks[:, 1:, :, :]
+# loss = torch.nn.L1Loss()(pred_mat, real_mat)
+"""dvh loss module_without_body"""
+
+"""dice_loss_version_2"""
+loss = dice_loss(pred, true_dose)
+"""dice_loss_version_2"""
